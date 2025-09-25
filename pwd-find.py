@@ -42,4 +42,3 @@ if _name_ == "_main_":
         print("Please run this script as root!")
     else:
         read_wifi_passwords()
-```
