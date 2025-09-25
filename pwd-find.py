@@ -1,4 +1,3 @@
-```python
 import os
 
 FILE = "/data/misc/wifi/wpa_supplicant.conf"
