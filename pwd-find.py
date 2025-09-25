@@ -1,29 +1,46 @@
 ```python
-import subprocess
+import os
 
-def get_wifi_profiles():
-    profiles_data = subprocess.check_output('netsh wlan show profiles', shell=True, text=True)
-    profiles = []
-    for line in profiles_data.split('\n'):
-        if "All User Profile" in line:
-            profile = line.split(":")[1].strip()
-            profiles.append(profile)
-    return profiles
+FILE = "/data/misc/wifi/wpa_supplicant.conf"
 
-def get_password(profile):
-    try:
-        result = subprocess.check_output(f'netsh wlan show profile name="{profile}" key=clear', shell=True, text=True)
-        for line in result.split('\n'):
-            if "Key Content" in line:
-                password = line.split(":")[1].strip()
-                return password
-        return None
-    except:
-        return None
+def check_root():
+    return os.geteuid() == 0
+
+def read_wifi_passwords():
+    if not os.path.isfile(FILE):
+        print(f"{FILE} not found or inaccessible.")
+        return
+
+    with open(FILE, "r", encoding="utf-8", errors="ignore") as f:
+        lines = f.readlines()
+
+    networks = []
+    network = {}
+    inside_network = False
+
+    for line in lines:
+        line = line.strip()
+        if line.startswith("network={"):
+            inside_network = True
+            network = {}
+        elif line.startswith("}"):
+            inside_network = False
+            if "ssid" in network:
+                networks.append(network)
+        elif inside_network:
+            if line.startswith("ssid="):
+                network["ssid"] = line.split("=",1)[1].strip().strip('"')
+            elif line.startswith("psk="):
+                network["psk"] = line.split("=",1)[1].strip().strip('"')
+
+    for net in networks:
+        ssid = net.get("ssid", "Unknown")
+        psk = net.get("psk", "Open/No Password")
+        print(f"SSID: {ssid}  -->  Password: {psk}")
 
 if _name_ == "_main_":
-    profiles = get_wifi_profiles()
-    for profile in profiles:
-        pwd = get_password(profile)
-        print(f"SSID: {profile}  -->  Password: {pwd if pwd else 'No password found or open network'}")
+    if not check_root():
+        print("Please run this script as root!")
+    else:
+        read_wifi_passwords()
 ```
